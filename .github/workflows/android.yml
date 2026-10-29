@@ -51,13 +51,6 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Download Alpine rootfs
-        run: |
-          mkdir -p core/main/src/main/assets
-          curl -L \
-            -o core/main/src/main/assets/alpine-aarch64.tar.gz.rootfs \
-            https://github.com/nglam0205/ReTerminal/releases/download/ROOTFS/alpine-aarch64.tar.gz.rootfs
-
       - name: Set Commit Hash
         id: commit_hash
         run: echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
