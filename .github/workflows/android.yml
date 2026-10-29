@@ -1,4 +1,5 @@
 name: Android CI
+
 on:
   push:
     branches:
@@ -8,6 +9,9 @@ on:
       - '**/*.md'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-release:
     name: Build Release
@@ -15,6 +19,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -49,6 +55,28 @@ jobs:
         id: commit_hash
         run: echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
+      - name: Generate changelog
+        shell: bash
+        run: |
+          {
+            echo "## ReTerminal Release"
+            echo ""
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Branch: ${GITHUB_REF_NAME}"
+            echo "- Author: ${GITHUB_ACTOR}"
+            echo ""
+            echo "## Changelog"
+            echo ""
+            LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+            if [ -n "$LAST_TAG" ]; then
+              echo "### Changes since $LAST_TAG"
+              git log "$LAST_TAG..HEAD" --pretty=format:"- %s (%an)" || git log -n 20 --pretty=format:"- %s (%an)"
+            else
+              echo "### Recent commits"
+              git log -n 20 --pretty=format:"- %s (%an)"
+            fi
+          } > changelog.md
+
       - name: Build with Gradle
         run: ./gradlew assembleRelease && mv app/build/outputs/apk/release/*.apk app/reterminal-${{ env.COMMIT_HASH }}.apk
         env:
@@ -59,19 +87,18 @@ jobs:
       - name: Archive APK
         uses: actions/upload-artifact@v4
         with:
-          name: Karbon-Release
+          name: ReTerminal-Release
           path: app/reterminal-${{ env.COMMIT_HASH }}.apk
 
       - name: Delete xed.keystore and signing.properties
-        run: rm /tmp/xed.keystore /tmp/signing.properties
+        run: rm -f /tmp/xed.keystore /tmp/signing.properties
 
-      - name: Send APK to Telegram
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT }}
-        if: ${{ success() && github.event.head_commit.message != '' && env.TELEGRAM_BOT_TOKEN != '' }}
-        run: |
-          curl -X POST "https://api.telegram.org/bot${{ env.TELEGRAM_BOT_TOKEN }}/sendDocument" \
-          -F chat_id="-1002292589492" \
-          -F message_thread_id="116" \
-          -F caption="${{ github.event.head_commit.message }} by ${{ github.actor }}" \
-          -F document=@"app/reterminal-${{ env.COMMIT_HASH }}.apk"
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.COMMIT_HASH }}
+          name: ReTerminal ${{ env.COMMIT_HASH }}
+          body_path: changelog.md
+          draft: false
+          prerelease: false
+          files: app/reterminal-${{ env.COMMIT_HASH }}.apk
