@@ -112,10 +112,9 @@ class TerminalBackEnd(
         Log.e(tag ?: "Terminal", "Exception", e)
     }
 
-    override fun onSingleTapUp(e: MotionEvent) {
-        val hasHardwareKeyboard = activity.resources.configuration.keyboard != Configuration.KEYBOARD_NOKEY
-        if (hasHardwareKeyboard && Settings.hide_soft_keyboard_if_hwd) return
+    override fun onScale(scale: Float): Float = scale
 
+    override fun onSingleTapUp(e: MotionEvent) {
         val imm = activity.getSystemService(InputMethodManager::class.java)
         val isKeyboardAlreadyVisible = imm?.isActive(terminal) == true
 
