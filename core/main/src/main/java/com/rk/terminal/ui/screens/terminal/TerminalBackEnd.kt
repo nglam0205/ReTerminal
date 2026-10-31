@@ -1,6 +1,5 @@
 package com.rk.terminal.ui.screens.terminal
 
-import android.content.res.Configuration
 import android.media.MediaPlayer
 import android.util.Log
 import android.view.KeyEvent
