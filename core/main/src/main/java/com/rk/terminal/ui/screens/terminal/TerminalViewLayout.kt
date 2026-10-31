@@ -1,7 +1,9 @@
 package com.rk.terminal.ui.screens.terminal
 
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -37,9 +39,28 @@ fun TerminalViewLayout(
         AndroidView(
             factory = { ctx ->
                 TerminalView(ctx, null).apply {
+                    isFocusable = true
+                    isFocusableInTouchMode = true
+
                     viewModel.setTerminalView(this)
                     setTextSize(dpToPx(Settings.terminal_font_size.toFloat(), ctx))
                     setBackgroundColor(android.graphics.Color.TRANSPARENT)
+
+                    setOnTouchListener { _, event ->
+                        if (event.action == MotionEvent.ACTION_DOWN) {
+                            val imm = ctx.getSystemService(InputMethodManager::class.java)
+                            if (imm?.isActive(this) != true) {
+                                post {
+                                    isFocusable = true
+                                    isFocusableInTouchMode = true
+                                    requestFocus()
+                                    requestFocusFromTouch()
+                                    imm?.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
+                                }
+                            }
+                        }
+                        false
+                    }
 
                     val client = TerminalBackEnd(this, mainActivity)
                     val service = sessionBinder.getService()
@@ -114,7 +135,6 @@ fun TerminalViewLayout(
 private fun VirtualKeysPager(viewModel: TerminalViewModel) {
     val pagerState = rememberPagerState(pageCount = { 2 })
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
-
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
 
     HorizontalPager(
@@ -127,9 +147,8 @@ private fun VirtualKeysPager(viewModel: TerminalViewModel) {
                     factory = { ctx ->
                         VirtualKeysView(ctx, null).apply {
                             viewModel.setVirtualKeysView(this)
-                            virtualKeysViewClient = viewModel.terminalView?.mTermSession?.let {
-                                VirtualKeysListener(it)
-                            }
+                            val client = viewModel.terminalView?.mTermSession?.let { VirtualKeysListener(it) }
+                            virtualKeysViewClient = client
                             buttonTextColor = onSurfaceColor
                             reload(VirtualKeysInfo(Settings.virtual_keys_string, "", VirtualKeysConstants.CONTROL_CHARS_ALIASES))
                         }
@@ -153,27 +172,6 @@ private fun VirtualKeysPager(viewModel: TerminalViewModel) {
                             setHintTextColor(onSurfaceVariantColor)
                             setBackgroundColor(android.graphics.Color.TRANSPARENT)
                             doOnTextChanged { t, _, _, _ -> text = t.toString() }
-                            setOnEditorActionListener { _, actionId, _ ->
-                                if (actionId == EditorInfo.IME_ACTION_DONE) {
-                                    val terminal = viewModel.terminalView
-                                    if (text.isEmpty()) {
-                                        terminal?.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
-                                        terminal?.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
-                                    } else {
-                                        terminal?.currentSession?.write(text)
-                                        setText("")
-                                    }
-                                    true
-                                } else false
-                            }
-                        }
-                    },
-                    update = { editText ->
-                        editText.setTextColor(onSurfaceColor)
-                        editText.setHintTextColor(onSurfaceVariantColor)
-                        if (editText.text.toString() != text) {
-                            editText.setText(text)
-                            editText.setSelection(text.length)
                         }
                     }
                 )
