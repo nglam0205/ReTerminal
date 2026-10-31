@@ -1,7 +1,6 @@
 package com.rk.terminal.ui.screens.terminal
 
 import android.content.res.Configuration
-import android.content.res.Resources
 import android.media.MediaPlayer
 import android.util.Log
 import android.view.KeyEvent
@@ -119,7 +118,15 @@ class TerminalBackEnd(
         val isKeyboardAlreadyVisible = imm?.isActive(terminal) == true
 
         if (!isKeyboardAlreadyVisible) {
-            showSoftInput()
+            terminal.post {
+                terminal.isFocusable = true
+                terminal.isFocusableInTouchMode = true
+                terminal.requestFocus()
+                terminal.requestFocusFromTouch()
+
+                val imm2 = activity.getSystemService(InputMethodManager::class.java)
+                imm2?.showSoftInput(terminal, InputMethodManager.SHOW_IMPLICIT)
+            }
         }
     }
 
@@ -176,11 +183,5 @@ class TerminalBackEnd(
         if (terminal.mEmulator != null) {
             terminal.setTerminalCursorBlinkerState(true, true)
         }
-    }
-
-    private fun showSoftInput() {
-        terminal.requestFocus()
-        val imm = activity.getSystemService(InputMethodManager::class.java)
-        imm?.showSoftInput(terminal, InputMethodManager.SHOW_IMPLICIT)
     }
 }
