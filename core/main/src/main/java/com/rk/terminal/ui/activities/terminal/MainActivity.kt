@@ -8,7 +8,6 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.view.View
-import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -45,8 +44,6 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
     val viewModel: MainViewModel by viewModels()
     private val terminalViewModel: TerminalViewModel by viewModels()
-    private var isKeyboardVisible = false
-    private var wasKeyboardOpen = false
     private var pendingScript by mutableStateOf<File?>(null)
 
     private val requestNotificationPermission =
@@ -108,8 +105,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        
-        setupKeyboardListener()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -128,21 +123,6 @@ class MainActivity : ComponentActivity() {
         viewModel.unbindService(this)
     }
 
-    override fun onPause() {
-        super.onPause()
-        wasKeyboardOpen = isKeyboardVisible
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (wasKeyboardOpen && !isKeyboardVisible) {
-            terminalViewModel.terminalView?.let { terminalView ->
-                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.showSoftInput(terminalView, InputMethodManager.SHOW_IMPLICIT)
-            }
-        }
-    }
-
     private fun requestPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
@@ -152,17 +132,6 @@ class MainActivity : ComponentActivity() {
             ) {
                 requestNotificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
-        }
-    }
-
-    private fun setupKeyboardListener() {
-        val rootView = findViewById<View>(android.R.id.content)
-        rootView.viewTreeObserver.addOnGlobalLayoutListener {
-            val rect = Rect()
-            rootView.getWindowVisibleDisplayFrame(rect)
-            val screenHeight = rootView.rootView.height
-            val keypadHeight = screenHeight - rect.bottom
-            isKeyboardVisible = keypadHeight > screenHeight * 0.15
         }
     }
 
