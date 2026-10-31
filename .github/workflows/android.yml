@@ -60,11 +60,11 @@ jobs:
             printf '%s' "$PROPERTIES_SECRET" | base64 --decode > /tmp/signing.properties
           else
             cat > /tmp/signing.properties <<'EOF'
-keyAlias=androiddebugkey
-keyPassword=android
-storePassword=android
-storeFile=/tmp/xed.keystore
-EOF
+             keyAlias=androiddebugkey
+             keyPassword=android
+             storePassword=android
+             storeFile=/tmp/xed.keystore
+           EOF
           fi
 
           keytool -list -keystore /tmp/xed.keystore -storepass android >/dev/null
